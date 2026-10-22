@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wekan
+spec:
+  # Pinned at 1 on purpose. Cosmos DB for MongoDB vCore exposes no oplog, so
+  # MONGO_OPLOG_URL stays empty and Meteor falls back to poll-and-diff, which
+  # does not keep multiple instances in sync. Scaling out needs oplog support
+  # plus sticky sessions for the DDP/sockjs connection.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: wekan
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: wekan
+    spec:
+      securityContext:
+        # No runAsUser/runAsNonRoot: the image declares USER wekan by name and
+        # the account is created with `useradd --system`, so the uid is not
+        # stable enough to assert here. The image already drops to that user.
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: wekan
+          image: ghcr.io/wekan/wekan:v12.63
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: wekan-env
+            # MONGO_URL, projected from Azure Key Vault by the ExternalSecret.
+            # The pod stays in CreateContainerConfigError until ESO has written
+            # this secret for the first time, then starts on its own.
+            - secretRef:
+                name: wekan-mongodb
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          # Meteor needs a long first start; / answers 302 to the sign-in page
+          # once the bundle is up, which counts as success for an HTTP probe.
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: data
+          emptyDir: {}
