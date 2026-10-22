@@ -3,16 +3,9 @@ kind: ConfigMap
 metadata:
   name: wekan-env
 data:
-  # Must match the public URL the Application Gateway serves, scheme included.
-  # Meteor derives every absolute asset and DDP URL from it, so with TLS ending
-  # at the gateway and plain HTTP forwarded inwards, this is what keeps Wekan
-  # emitting https:// links instead of http:// ones the browser then blocks.
   ROOT_URL: "https://wekan.vessyinc.com"
   PORT: "8080"
   WRITABLE_PATH: "/data"
   WITH_API: "true"
-  # Browser policy drives the Content-Security-Policy headers; TRUSTED_URL is
-  # the origin allowed to frame and serve assets, which here is Wekan's own
-  # public URL since nothing is fronted by a separate CDN.
   BROWSER_POLICY_ENABLED: "true"
   TRUSTED_URL: "https://wekan.vessyinc.com"
