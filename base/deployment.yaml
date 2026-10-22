@@ -19,9 +19,6 @@ spec:
         app.kubernetes.io/name: wekan
     spec:
       securityContext:
-        # No runAsUser/runAsNonRoot: the image declares USER wekan by name and
-        # the account is created with `useradd --system`, so the uid is not
-        # stable enough to assert here. The image already drops to that user.
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -34,9 +31,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: wekan-env
-            # MONGO_URL, projected from Azure Key Vault by the ExternalSecret.
-            # The pod stays in CreateContainerConfigError until ESO has written
-            # this secret for the first time, then starts on its own.
             - secretRef:
                 name: wekan-mongodb
           securityContext:
@@ -55,8 +49,6 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
-          # Meteor needs a long first start; / answers 302 to the sign-in page
-          # once the bundle is up, which counts as success for an HTTP probe.
           startupProbe:
             httpGet:
               path: /
