@@ -33,6 +33,8 @@ spec:
                 name: wekan-env
             - secretRef:
                 name: wekan-mongodb
+            - secretRef:
+                name: wekan-oauth2
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
